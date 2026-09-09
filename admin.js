@@ -46,6 +46,7 @@ const loading = document.getElementById('global-loading');
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     fetchVideos();
+    initAdminSocket();
     
     // Add Search Listener
     searchInput.addEventListener('input', (e) => {
@@ -294,3 +295,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ==========================================
+// REAL-TIME SYNC VIA SOCKET.IO
+// ==========================================
+let adminSocket = null;
+function initAdminSocket() {
+    if (typeof io === 'undefined') return;
+    try {
+        const socketHost = BASE_URL.includes('localhost') ? BASE_URL : 'https://tiktubeptk.onrender.com';
+        adminSocket = io(socketHost);
+        adminSocket.on('connect', () => {
+            console.log('⚡ Admin Realtime Connected via Socket.IO');
+        });
+        
+        // Khi có người dùng upload video mới lên
+        adminSocket.on('newVideoUploaded', (data) => {
+            console.log('⚡ [Realtime] Video mới tải lên:', data);
+            showToast(`🔔 Có video mới #${data.videoId || ''} đang chờ duyệt: "${data.video?.Title || 'Video mới'}"`, 'info');
+            fetchVideos();
+        });
+
+        // Khi trạng thái duyệt thay đổi
+        adminSocket.on('videoStatusChanged', () => {
+            fetchVideos();
+        });
+    } catch (e) {
+        console.warn('Admin socket init error:', e.message);
+    }
+}
