@@ -1,7 +1,8 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 let sql = require('mssql');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,14 +47,14 @@ async function connectDB() {
         try {
             const check = await pool.request()
                 .input('username', sql.NVarChar(100), 'admin')
-                .query('SELECT username FROM tai_khoan_admin WHERE username = @username');
+                .query("SELECT username FROM dbo.tai_khoan_admin WHERE username = @username");
             if (!check.recordset || check.recordset.length === 0) {
                 const salt = await bcrypt.genSalt(10);
                 const hash = await bcrypt.hash('admin123', salt);
                 await pool.request()
                     .input('username', sql.NVarChar(100), 'admin')
                     .input('password', sql.NVarChar(255), hash)
-                    .query('INSERT INTO tai_khoan_admin (username, password) VALUES (@username, @password)');
+                    .query("INSERT INTO dbo.tai_khoan_admin (username, password) VALUES (@username, @password)");
                 console.log('👑 Created default Admin: admin / admin123');
             }
         } catch (e) {
@@ -73,11 +74,7 @@ connectDB();
 app.get('/api/videos', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
-        const result = await pool.request().query(\
-            SELECT * FROM dbo.video 
-            WHERE trang_thai = 'da_duyet'
-            ORDER BY video_id DESC
-        \);
+        const result = await pool.request().query("SELECT * FROM dbo.video WHERE trang_thai = 'da_duyet' ORDER BY video_id DESC");
         res.json(result.recordset || []);
     } catch (err) {
         console.error('Error fetching videos:', err);
@@ -89,12 +86,7 @@ app.get('/api/videos', async (req, res) => {
 app.get('/api/admin/videos', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
-        const result = await pool.request().query(\
-            SELECT v.*, u.ten_dang_nhap as nguoi_dang 
-            FROM dbo.video v
-            LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
-            ORDER BY v.video_id DESC
-        \);
+        const result = await pool.request().query("SELECT v.*, u.ten_dang_nhap as nguoi_dang FROM dbo.video v LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id ORDER BY v.video_id DESC");
         res.json(result.recordset || []);
     } catch (err) {
         console.error('Error fetching admin videos:', err);
@@ -106,11 +98,7 @@ app.get('/api/admin/videos', async (req, res) => {
 app.get('/api/admin/users', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
-        const result = await pool.request().query(\
-            SELECT nguoi_dung_id, ten_dang_nhap, email, anh_dai_dien, ngay_tao
-            FROM dbo.nguoi_dung
-            ORDER BY nguoi_dung_id DESC
-        \);
+        const result = await pool.request().query("SELECT nguoi_dung_id, ten_dang_nhap, email, anh_dai_dien, ngay_tao FROM dbo.nguoi_dung ORDER BY nguoi_dung_id DESC");
         res.json(result.recordset || []);
     } catch (err) {
         console.error('Error fetching admin users:', err);
@@ -121,132 +109,117 @@ app.get('/api/admin/users', async (req, res) => {
 // RESET USER PASSWORD (Admin action)
 const crypto = require('crypto');
 function hashPassword(raw) {
-    return crypto.createHash( sha256).update(String(raw || ), utf8).digest(hex);
+    return crypto.createHash("sha256").update(String(raw || ""), "utf8").digest("hex");
 }
 app.put('/api/admin/users/:id/reset-password', async (req, res) => {
- try {
- const { id } = req.params;
- const newPasswordHash = hashPassword('123456'); // Reset to 123456
- 
- const pool = await sql.connect(dbConfig);
- await pool.request()
- .input('id', sql.Int, id)
- .input('hash', sql.NVarChar(255), newPasswordHash)
- .query(\
- UPDATE dbo.nguoi_dung 
- SET mat_khau_hash = @hash, ngay_cap_nhat = GETUTCDATE()
- WHERE nguoi_dung_id = @id
- \);
- 
- res.json({ message: 'Password reset to 123456 successfully' });
- } catch (err) {
- console.error('Error resetting password:', err);
- res.status(500).json({ error: 'Failed to reset password' });
- }
+    try {
+        const { id } = req.params;
+        const newPasswordHash = hashPassword('123456'); // Reset to 123456
+        
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('hash', sql.NVarChar(255), newPasswordHash)
+            .query("UPDATE dbo.nguoi_dung SET mat_khau_hash = @hash, ngay_cap_nhat = GETUTCDATE() WHERE nguoi_dung_id = @id");
+            
+        res.json({ message: 'Password reset to 123456 successfully' });
+    } catch (err) {
+        console.error('Error resetting password:', err);
+        res.status(500).json({ error: 'Failed to reset password' });
+    }
 });
 
 // GET single video by ID
 app.get('/api/videos/:id', async (req, res) => {
- try {
- const { id } = req.params;
- const pool = await sql.connect(dbConfig);
- const result = await pool.request()
- .input('id', sql.Int, id)
- .query('SELECT * FROM dbo.video WHERE video_id = @id');
- 
- if (!result.recordset || result.recordset.length === 0) return res.status(404).json({ message: 'Video not found' });
- res.json(result.recordset[0]);
- } catch (err) {
- console.error('Error fetching video:', err);
- res.status(500).json({ error: 'Failed to fetch video' });
- }
+    try {
+        const { id } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query("SELECT * FROM dbo.video WHERE video_id = @id");
+            
+        if (!result.recordset || result.recordset.length === 0) return res.status(404).json({ message: 'Video not found' });
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error('Error fetching video:', err);
+        res.status(500).json({ error: 'Failed to fetch video' });
+    }
 });
 
 // UPDATE an existing video
 app.put('/api/videos/:id', async (req, res) => {
- try {
- const { id } = req.params;
- const { title, url, description, thumbnail } = req.body;
- const pool = await sql.connect(dbConfig);
- 
- await pool.request()
- .input('id', sql.Int, id)
- .input('tieu_de', sql.NVarChar(255), title || '')
- .input('duong_dan_video', sql.NVarChar(500), url || '')
- .input('mo_ta', sql.NVarChar(sql.MAX), description || '')
- .input('duong_dan_anh_bia', sql.NVarChar(500), thumbnail || '')
- .query(\
- UPDATE dbo.video
- SET tieu_de = @tieu_de, duong_dan_video = @duong_dan_video, mo_ta = @mo_ta, duong_dan_anh_bia = @duong_dan_anh_bia
- WHERE video_id = @id
- \);
- 
- const verify = await pool.request().input('id', sql.Int, id).query('SELECT * FROM dbo.video WHERE video_id = @id');
- if (!verify.recordset || verify.recordset.length === 0) return res.status(404).json({ message: 'Video not found' });
- res.json(verify.recordset[0]);
- } catch (err) {
- console.error('Error updating video:', err);
- res.status(500).json({ error: 'Failed to update video' });
- }
+    try {
+        const { id } = req.params;
+        const { title, url, description, thumbnail } = req.body;
+        const pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('tieu_de', sql.NVarChar(255), title || '')
+            .input('duong_dan_video', sql.NVarChar(500), url || '')
+            .input('mo_ta', sql.NVarChar(sql.MAX), description || '')
+            .input('duong_dan_anh_bia', sql.NVarChar(500), thumbnail || '')
+            .query("UPDATE dbo.video SET tieu_de = @tieu_de, duong_dan_video = @duong_dan_video, mo_ta = @mo_ta, duong_dan_anh_bia = @duong_dan_anh_bia WHERE video_id = @id");
+            
+        const verify = await pool.request().input('id', sql.Int, id).query("SELECT * FROM dbo.video WHERE video_id = @id");
+        if (!verify.recordset || verify.recordset.length === 0) return res.status(404).json({ message: 'Video not found' });
+        res.json(verify.recordset[0]);
+    } catch (err) {
+        console.error('Error updating video:', err);
+        res.status(500).json({ error: 'Failed to update video' });
+    }
 });
 
 // UPDATE video STATUS (Duyệt / Từ chối / Chờ duyệt)
 app.put('/api/videos/:id/status', async (req, res) => {
- try {
- const { id } = req.params;
- const { trang_thai, ly_do, admin_username } = req.body;
- if (!trang_thai) return res.status(400).json({ error: 'Thiếu trang_thai' });
+    try {
+        const { id } = req.params;
+        const { trang_thai, ly_do, admin_username } = req.body;
+        if (!trang_thai) return res.status(400).json({ error: 'Thiếu trang_thai' });
 
- const pool = await sql.connect(dbConfig);
- 
- // Cập nhật bảng video
- await pool.request()
- .input('id', sql.Int, id)
- .input('trang_thai', sql.NVarChar(50), trang_thai)
- .query(\
- UPDATE dbo.video
- SET trang_thai = @trang_thai
- WHERE video_id = @id
- \);
- 
- // Lưu lịch sử kiểm duyệt
- try {
- await pool.request()
- .input('video_id', sql.Int, id)
- .input('admin_username', sql.NVarChar(100), admin_username || 'Admin')
- .input('trang_thai_moi', sql.NVarChar(50), trang_thai)
- .input('ly_do', sql.NVarChar(sql.MAX), ly_do || '')
- .query(\
- INSERT INTO dbo.kiem_duyet_video (video_id, admin_username, trang_thai_moi, ly_do)
- VALUES (@video_id, @admin_username, @trang_thai_moi, @ly_do)
- \);
- } catch (e) {
- console.warn('[kiem_duyet_video warning]:', e.message);
- }
- 
- const verify = await pool.request().input('id', sql.Int, id).query('SELECT * FROM dbo.video WHERE video_id = @id');
- if (!verify.recordset || verify.recordset.length === 0) return res.status(404).json({ message: 'Video not found' });
- res.json(verify.recordset[0]);
- } catch (err) {
- console.error('Error updating status:', err);
- res.status(500).json({ error: 'Failed to update status' });
- }
+        const pool = await sql.connect(dbConfig);
+        
+        // Cập nhật bảng video
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('trang_thai', sql.NVarChar(50), trang_thai)
+            .query("UPDATE dbo.video SET trang_thai = @trang_thai WHERE video_id = @id");
+            
+        // Lưu lịch sử kiểm duyệt
+        try {
+            await pool.request()
+                .input('video_id', sql.Int, id)
+                .input('admin_username', sql.NVarChar(100), admin_username || 'Admin')
+                .input('trang_thai_moi', sql.NVarChar(50), trang_thai)
+                .input('ly_do', sql.NVarChar(sql.MAX), ly_do || '')
+                .query("INSERT INTO dbo.kiem_duyet_video (video_id, admin_username, trang_thai_moi, ly_do) VALUES (@video_id, @admin_username, @trang_thai_moi, @ly_do)");
+        } catch (e) {
+            console.warn('[kiem_duyet_video warning]:', e.message);
+        }
+            
+        const verify = await pool.request().input('id', sql.Int, id).query("SELECT * FROM dbo.video WHERE video_id = @id");
+        if (!verify.recordset || verify.recordset.length === 0) return res.status(404).json({ message: 'Video not found' });
+        res.json(verify.recordset[0]);
+    } catch (err) {
+        console.error('Error updating status:', err);
+        res.status(500).json({ error: 'Failed to update status' });
+    }
 });
 
 // DELETE a video
 app.delete('/api/videos/:id', async (req, res) => {
- try {
- const { id } = req.params;
- const pool = await sql.connect(dbConfig);
- await pool.request()
- .input('id', sql.Int, id)
- .query('DELETE FROM dbo.video WHERE video_id = @id');
- 
- res.json({ message: 'Video deleted successfully' });
- } catch (err) {
- console.error('Error deleting video:', err);
- res.status(500).json({ error: 'Failed to delete video' });
- }
+    try {
+        const { id } = req.params;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('id', sql.Int, id)
+            .query("DELETE FROM dbo.video WHERE video_id = @id");
+            
+        res.json({ message: 'Video deleted successfully' });
+    } catch (err) {
+        console.error('Error deleting video:', err);
+        res.status(500).json({ error: 'Failed to delete video' });
+    }
 });
 
 // ============================================
@@ -255,104 +228,86 @@ app.delete('/api/videos/:id', async (req, res) => {
 
 // Register
 app.post('/api/auth/register', async (req, res) => {
- try {
- const { username, password } = req.body;
- if (!username || !password) return res.status(400).json({ error: 'Thiếu username hoặc password' });
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) return res.status(400).json({ error: 'Thiếu username hoặc password' });
 
- const pool = await sql.connect(dbConfig);
- 
- const checkUser = await pool.request()
- .input('username', sql.NVarChar(100), username)
- .query('SELECT username FROM dbo.tai_khoan_admin WHERE username = @username');
- 
- if (checkUser.recordset && checkUser.recordset.length > 0) {
- return res.status(400).json({ error: 'Tên đăng nhập đã tồn tại' });
- }
+        const pool = await sql.connect(dbConfig);
+        
+        const checkUser = await pool.request()
+            .input('username', sql.NVarChar(100), username)
+            .query("SELECT username FROM dbo.tai_khoan_admin WHERE username = @username");
+            
+        if (checkUser.recordset && checkUser.recordset.length > 0) {
+            return res.status(400).json({ error: 'Tên đăng nhập đã tồn tại' });
+        }
 
- const salt = await bcrypt.genSalt(10);
- const hashedPassword = await bcrypt.hash(password, salt);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
- await pool.request()
- .input('username', sql.NVarChar(100), username)
- .input('password', sql.NVarChar(255), hashedPassword)
- .query('INSERT INTO dbo.tai_khoan_admin (username, password) VALUES (@username, @password)');
+        await pool.request()
+            .input('username', sql.NVarChar(100), username)
+            .input('password', sql.NVarChar(255), hashedPassword)
+            .query("INSERT INTO dbo.tai_khoan_admin (username, password) VALUES (@username, @password)");
 
- res.status(201).json({ message: 'Đăng ký thành công' });
- } catch (err) {
- console.error('Error registering user:', err);
- res.status(500).json({ error: 'Lỗi server khi đăng ký' });
- }
+        res.status(201).json({ message: 'Đăng ký thành công' });
+    } catch (err) {
+        console.error('Error registering user:', err);
+        res.status(500).json({ error: 'Lỗi server khi đăng ký' });
+    }
 });
 
 // Login
 app.post('/api/auth/login', async (req, res) => {
- try {
- const { username, password } = req.body;
- if (!username || !password) return res.status(400).json({ error: 'Thiếu username hoặc password' });
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) return res.status(400).json({ error: 'Thiếu username hoặc password' });
 
- const pool = await sql.connect(dbConfig);
- const result = await pool.request()
- .input('username', sql.NVarChar(100), username)
- .query('SELECT * FROM dbo.tai_khoan_admin WHERE username = @username');
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.NVarChar(100), username)
+            .query("SELECT * FROM dbo.tai_khoan_admin WHERE username = @username");
 
- if (!result.recordset || result.recordset.length === 0) {
- return res.status(400).json({ error: 'Tài khoản không tồn tại' });
- }
+        if (!result.recordset || result.recordset.length === 0) {
+            return res.status(400).json({ error: 'Tài khoản không tồn tại' });
+        }
 
- const user = result.recordset[0];
- const validPassword = await bcrypt.compare(password, user.password);
- if (!validPassword) {
- return res.status(400).json({ error: 'Mật khẩu không chính xác' });
- }
+        const user = result.recordset[0];
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(400).json({ error: 'Mật khẩu không chính xác' });
+        }
 
- res.json({ message: 'Đăng nhập thành công', token: 'fake_jwt_token_for_now', username: user.username });
- } catch (err) {
- console.error('Error logging in:', err);
- res.status(500).json({ error: 'Lỗi server khi đăng nhập' });
- }
+        res.json({ message: 'Đăng nhập thành công', token: 'fake_jwt_token_for_now', username: user.username });
+    } catch (err) {
+        console.error('Error logging in:', err);
+        res.status(500).json({ error: 'Lỗi server khi đăng nhập' });
+    }
 });
 
 // GET OVERALL STATISTICS (Admin)
 app.get('/api/admin/stats/overall', async (req, res) => {
- try {
- const pool = await sql.connect(dbConfig);
- 
- const totalsResult = await pool.request().query(\
- SELECT 
- (SELECT ISNULL(SUM(luot_xem), 0) FROM dbo.video) as total_views,
- (SELECT COUNT(*) FROM dbo.luot_thich) as total_likes,
- (SELECT COUNT(*) FROM dbo.binh_luan) as total_comments
- \);
- const totals = totalsResult.recordset[0];
- 
- const videosResult = await pool.request().query(\
- SELECT 
- v.video_id, 
- v.tieu_de, 
- v.mo_ta,
- v.luot_xem, 
- v.duong_dan_anh_bia,
- (SELECT COUNT(*) FROM dbo.luot_thich l WHERE l.video_id = v.video_id) as so_luot_thich,
- (SELECT COUNT(*) FROM dbo.binh_luan c WHERE c.video_id = v.video_id) as so_binh_luan,
- u.ten_dang_nhap as nguoi_dang
- FROM dbo.video v
- LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id
- ORDER BY v.luot_xem DESC
- \);
+    try {
+        const pool = await sql.connect(dbConfig);
+        
+        const totalsResult = await pool.request().query("SELECT (SELECT COALESCE(SUM(luot_xem), 0) FROM dbo.video) as total_views, (SELECT COUNT(*) FROM dbo.luot_thich) as total_likes, (SELECT COUNT(*) FROM dbo.binh_luan) as total_comments");
+        const totals = totalsResult.recordset?.[0] || { total_views: 0, total_likes: 0, total_comments: 0 };
+        
+        const videosResult = await pool.request().query("SELECT v.video_id, v.tieu_de, v.mo_ta, v.luot_xem, v.duong_dan_anh_bia, (SELECT COUNT(*) FROM dbo.luot_thich l WHERE l.video_id = v.video_id) as so_luot_thich, (SELECT COUNT(*) FROM dbo.binh_luan c WHERE c.video_id = v.video_id) as so_binh_luan, u.ten_dang_nhap as nguoi_dang FROM dbo.video v LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id ORDER BY v.luot_xem DESC");
 
- res.json({
- totals: totals,
- daily: [],
- videos: videosResult.recordset || []
- });
- } catch (err) {
- console.error('Error fetching admin live stats:', err);
- res.status(500).json({ error: 'Failed to fetch statistics: ' + err.message });
- }
+        res.json({
+            totals: totals,
+            daily: [],
+            videos: videosResult.recordset || []
+        });
+    } catch (err) {
+        console.error('Error fetching admin live stats:', err);
+        res.status(500).json({ error: 'Failed to fetch statistics: ' + err.message });
+    }
 });
 
 // Start Server
 app.listen(PORT, () => {
- console.log(\🚀 Server running on http://localhost:\\);
- console.log(\👉 Admin Panel available at http://localhost:\/admin.html\);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`👉 Admin Panel available at /admin.html`);
 });
