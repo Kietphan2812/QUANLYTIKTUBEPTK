@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <linearGradient id="inner-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0e7ff"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="15" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+  <!-- Background Rounded Shield/Card -->
+  <rect width="512" height="512" rx="120" fill="url(#bg-grad)"/>
+  
+  <!-- Outer Glow Circle -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="8"/>
+  
+  <!-- Center Shield / Admin symbol -->
+  <path d="M 256 95 L 380 150 L 380 270 C 380 355 256 415 256 415 C 256 415 132 355 132 270 L 132 150 Z" 
+        fill="rgba(15, 17, 26, 0.55)" stroke="url(#inner-grad)" stroke-width="12" filter="url(#glow)"/>
+  
+  <!-- Play Button inside Shield -->
+  <polygon points="230,200 315,256 230,312" fill="url(#inner-grad)"/>
+  
+  <!-- Subtle Badge Text -->
+  <text x="256" y="375" text-anchor="middle" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="28" letter-spacing="4">ADMIN</text>
+</svg>

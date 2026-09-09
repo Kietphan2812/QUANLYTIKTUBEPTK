@@ -1,0 +1,30 @@
+{
+  "name": "TIKTUBE - Quản Trị Hệ Thống",
+  "short_name": "Quản Trị TIKTUBE",
+  "description": "Bảng điều khiển quản trị video và người dùng TIKTUBE PTK",
+  "start_url": "/admin.html",
+  "display": "standalone",
+  "background_color": "#0f111a",
+  "theme_color": "#6366f1",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
