@@ -1,4 +1,4 @@
-const BASE_URL = 'https://response-brooklyn-malpractice-things.trycloudflare.com';
+const BASE_URL = (window.location.protocol.startsWith('http')) ? window.location.origin : 'http://localhost:3000';
 const loading = document.getElementById('global-loading');
 
 // Toast Notification System

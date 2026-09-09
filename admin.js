@@ -30,7 +30,7 @@ window.logoutAdmin = function() {
 // ==================================
 
 // API Configuration
-const BASE_URL = 'https://response-brooklyn-malpractice-things.trycloudflare.com';
+const BASE_URL = (window.location.protocol.startsWith('http')) ? window.location.origin : 'http://localhost:3000';
 let allVideos = [];
 let currentFilter = 'all';
 
