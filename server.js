@@ -86,7 +86,7 @@ app.get('/api/videos', async (req, res) => {
 app.get('/api/admin/videos', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
-        const result = await pool.request().query("SELECT v.*, u.ten_dang_nhap as nguoi_dang FROM dbo.video v LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id ORDER BY v.video_id DESC");
+        const result = await pool.request().query("SELECT v.*, u.ten_dang_nhap as nguoi_dang, kd.ly_do as ly_do_kiem_duyet, kd.admin_username as nguoi_kiem_duyet FROM dbo.video v LEFT JOIN dbo.nguoi_dung u ON v.nguoi_dung_id = u.nguoi_dung_id LEFT JOIN (SELECT k1.video_id, k1.ly_do, k1.admin_username FROM dbo.kiem_duyet_video k1 WHERE k1.id = (SELECT MAX(k2.id) FROM dbo.kiem_duyet_video k2 WHERE k2.video_id = k1.video_id)) kd ON v.video_id = kd.video_id ORDER BY v.video_id DESC");
         res.json(result.recordset || []);
     } catch (err) {
         console.error('Error fetching admin videos:', err);

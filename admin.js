@@ -129,9 +129,43 @@ function renderTable(data) {
         const isApproved = status === 'da_duyet';
         const isRejected = status === 'tu_choi';
         
-        let statusHtml = `<span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #fbbf24; color: #000;">Chờ duyệt</span>`;
-        if (isApproved) statusHtml = `<span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #22c55e; color: #fff;">Đã duyệt</span>`;
-        if (isRejected) statusHtml = `<span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #ef4444; color: #fff;">Từ chối</span>`;
+        const reason = video.ly_do_kiem_duyet || '';
+        let statusHtml = '';
+        if (isApproved) {
+            const isAuto = reason.includes('tự động') || reason.includes('AutoMod') || reason.includes('an toàn');
+            statusHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: ${isAuto ? '#16a34a' : '#22c55e'}; color: #fff; width: fit-content;">
+                    <i class="fa-solid ${isAuto ? 'fa-robot' : 'fa-check'}"></i> ${isAuto ? 'Đã duyệt tự động' : 'Đã duyệt'}
+                </span>
+                ${reason ? `<span style="font-size: 11px; color: #64748b;" title="${reason}">${reason.slice(0, 35)}${reason.length > 35 ? '...' : ''}</span>` : ''}
+            </div>`;
+        } else if (isRejected) {
+            statusHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+                <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #ef4444; color: #fff; width: fit-content;">
+                    <i class="fa-solid fa-ban"></i> Từ chối
+                </span>
+                ${reason ? `<span style="font-size: 11px; color: #ef4444;" title="${reason}">${reason.slice(0, 35)}${reason.length > 35 ? '...' : ''}</span>` : ''}
+            </div>`;
+        } else {
+            const isFlagged = reason.includes('Cảnh báo') || reason.includes('Phát hiện') || reason.includes('18+') || reason.includes('nhạy cảm') || reason.includes('thô tục') || reason.includes('kinh dị');
+            if (isFlagged) {
+                statusHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+                    <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #b91c1c; color: #fff; width: fit-content; box-shadow: 0 0 6px rgba(185,28,28,0.4);">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Chặn tự động (Nghi vấn)
+                    </span>
+                    <span style="font-size: 11px; color: #991b1b; background: #fee2e2; padding: 2px 6px; border-radius: 4px; font-weight: 500;" title="${reason}">
+                        ${reason}
+                    </span>
+                </div>`;
+            } else {
+                statusHtml = `<div style="display:flex; flex-direction:column; gap:4px;">
+                    <span style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #fbbf24; color: #000; width: fit-content;">
+                        <i class="fa-solid fa-clock"></i> Chờ duyệt
+                    </span>
+                    ${reason ? `<span style="font-size: 11px; color: #64748b;" title="${reason}">${reason.slice(0, 35)}${reason.length > 35 ? '...' : ''}</span>` : ''}
+                </div>`;
+            }
+        }
 
         let videoUrl = video.duong_dan_video || video.url || '#';
         if (!videoUrl.startsWith('http') && videoUrl !== '#') {
@@ -312,7 +346,11 @@ function initAdminSocket() {
         // Khi có người dùng upload video mới lên
         adminSocket.on('newVideoUploaded', (data) => {
             console.log('⚡ [Realtime] Video mới tải lên:', data);
-            showToast(`🔔 Có video mới #${data.videoId || ''} đang chờ duyệt: "${data.video?.Title || 'Video mới'}"`, 'info');
+            if (data.status === 'da_duyet' || data.isClean) {
+                showToast(`🤖 Video mới đã được TỰ ĐỘNG DUYỆT: "${data.video?.Title || 'Video'}"`, 'success');
+            } else {
+                showToast(`⚠️ CẢNH BÁO: Video mới bị giữ lại do nghi vấn: ${data.reason || 'Cần kiểm duyệt'}`, 'error');
+            }
             fetchVideos();
         });
 
