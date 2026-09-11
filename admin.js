@@ -13,30 +13,67 @@ function updateAdminAppBadge(count) {
     }
 }
 
-function showAdminDesktopNotification(title, body) {
+async function showAdminDesktopNotification(title, body) {
     if (!('Notification' in window)) return;
-    const trigger = () => {
+
+    let iconUrl = 'icon-192.png';
+    let badgeUrl = 'icon.svg';
+    try {
+        iconUrl = new URL('icon-192.png', window.location.href).href;
+        badgeUrl = new URL('icon.svg', window.location.href).href;
+    } catch (_) {}
+
+    const options = {
+        body: body || 'Có video mới cần duyệt hoặc báo cáo vi phạm!',
+        icon: iconUrl,
+        badge: badgeUrl,
+        vibrate: [300, 100, 300],
+        tag: 'admin-notif-' + Date.now(),
+        renotify: true,
+        data: { link: window.location.href }
+    };
+
+    const trigger = async () => {
+        // Ưu tiên ServiceWorkerRegistration trên điện thoại (Mobile Android & iOS)
+        if ('serviceWorker' in navigator) {
+            try {
+                let reg = await navigator.serviceWorker.getRegistration();
+                if (!reg) {
+                    reg = await Promise.race([
+                        navigator.serviceWorker.ready,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 3000))
+                    ]).catch(() => null);
+                }
+                if (reg && reg.showNotification) {
+                    await reg.showNotification(title || 'TIKTUBE Quản Trị', options);
+                    return;
+                }
+            } catch (err) {
+                console.warn('Admin SW notification error:', err);
+            }
+        }
+
+        // Fallback PC
         try {
-            const notif = new Notification(title || 'TIKTUBE Quản Trị', {
-                body: body || 'Có thông báo quản trị mới!',
-                icon: 'icon-192.png',
-                badge: 'icon-192.png'
-            });
+            const notif = new Notification(title || 'TIKTUBE Quản Trị', options);
             notif.onclick = () => {
                 window.focus();
                 notif.close();
             };
         } catch (e) {
-            console.warn('Desktop notif error:', e);
+            console.warn('Admin Desktop fallback error:', e);
         }
     };
 
     if (Notification.permission === 'granted') {
-        trigger();
+        await trigger();
     } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then(perm => {
-            if (perm === 'granted') trigger();
-        });
+        try {
+            const perm = await Notification.requestPermission();
+            if (perm === 'granted') await trigger();
+        } catch (e) {
+            console.warn('Admin permission error:', e);
+        }
     }
 }
 
@@ -426,3 +463,16 @@ function initAdminSocket() {
         console.warn('Admin socket init error:', e.message);
     }
 }
+
+
+// Tự động làm mới dữ liệu khi admin mở lại tab trình duyệt trên điện thoại
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        if (typeof loadAllData === "function") loadAllData();
+        if (typeof loadPendingVideos === "function") loadPendingVideos();
+        if (typeof loadPendingReports === "function") loadPendingReports();
+    }
+});
+window.addEventListener("focus", () => {
+    if (typeof loadAllData === "function") loadAllData();
+});

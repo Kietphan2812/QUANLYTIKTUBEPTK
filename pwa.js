@@ -7,8 +7,11 @@ let deferredInstallPrompt = null;
 // 1. Register Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(() => console.log('✅ Admin PWA Service Worker registered'))
+        navigator.serviceWorker.register('sw.js')
+            .then((reg) => {
+                console.log('✅ Admin PWA Service Worker registered:', reg.scope);
+                reg.update().catch(() => {});
+            })
             .catch(err => console.warn('PWA SW registration failed:', err));
     });
 }
