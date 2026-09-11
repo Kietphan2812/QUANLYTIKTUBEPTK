@@ -178,6 +178,7 @@ function renderTable(data) {
             <td><img src="${thumbStr}" class="thumb-preview" alt="thumbnail" onerror="this.src='${defaultThumb}'"></td>
             <td>
                 <span class="video-title">${video.tieu_de || video.title || 'Không có tiêu đề'}</span>
+                ${Number(video.so_bao_cao) > 0 ? `<span style="display:inline-block; font-size:11px; font-weight:700; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; border-radius:4px; padding:2px 6px; margin-left:6px;"><i class="fa-solid fa-flag"></i> ${video.so_bao_cao} báo cáo vi phạm</span>` : ''}
                 <span class="video-desc">${video.mo_ta || video.description || 'Không có mô tả'}</span>
             </td>
             <td><strong>${video.nguoi_dang || 'Ẩn danh'}</strong></td>
@@ -351,6 +352,14 @@ function initAdminSocket() {
             } else {
                 showToast(`⚠️ CẢNH BÁO: Video mới bị giữ lại do nghi vấn: ${data.reason || 'Cần kiểm duyệt'}`, 'error');
             }
+            fetchVideos();
+        });
+
+        // Khi có người xem gửi báo cáo vi phạm video
+        adminSocket.on('videoReported', (data) => {
+            console.log('🚨 [Report Alert]', data);
+            const hiddenNote = data.autoHidden ? ' ⛔ ĐÃ TỰ ĐỘNG TẠM ẨN KHỎI TRANG CHỦ!' : '';
+            showToast(`🚨 BÁO CÁO VI PHẠM: Video "${data.title}" bị phản ánh: ${data.reason} (${data.totalReports} lượt).${hiddenNote}`, 'error');
             fetchVideos();
         });
 
