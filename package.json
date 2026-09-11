@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "app": "electron main-electron.js"
   },
   "keywords": [],
   "author": "",
@@ -18,5 +19,8 @@
     "express": "^5.2.1",
     "mssql": "^12.2.1",
     "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "electron": "^44.3.0"
   }
 }
