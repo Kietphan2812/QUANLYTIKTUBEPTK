@@ -1,3 +1,53 @@
+
+// ============================================
+// ADMIN APP BADGE & WINDOWS NOTIFICATIONS
+// ============================================
+function updateAdminAppBadge(count) {
+    const num = Number(count) || 0;
+    if ('setAppBadge' in navigator) {
+        if (num > 0) {
+            navigator.setAppBadge(num).catch(e => console.warn('setAppBadge error:', e));
+        } else {
+            navigator.clearAppBadge().catch(e => console.warn('clearAppBadge error:', e));
+        }
+    }
+}
+
+function showAdminDesktopNotification(title, body) {
+    if (!('Notification' in window)) return;
+    const trigger = () => {
+        try {
+            const notif = new Notification(title || 'TIKTUBE Quản Trị', {
+                body: body || 'Có thông báo quản trị mới!',
+                icon: 'icon-192.png',
+                badge: 'icon-192.png'
+            });
+            notif.onclick = () => {
+                window.focus();
+                notif.close();
+            };
+        } catch (e) {
+            console.warn('Desktop notif error:', e);
+        }
+    };
+
+    if (Notification.permission === 'granted') {
+        trigger();
+    } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(perm => {
+            if (perm === 'granted') trigger();
+        });
+    }
+}
+
+// Tự động xin quyền thông báo khi nhấp chuột
+if ('Notification' in window && Notification.permission === 'default') {
+    document.addEventListener('click', function askPerm() {
+        Notification.requestPermission();
+        document.removeEventListener('click', askPerm);
+    }, { once: true });
+}
+
 // ====== AUTHENTICATION CHECK ======
 if (!localStorage.getItem('admin_token')) {
     window.location.href = 'auth.html';
@@ -98,6 +148,9 @@ async function fetchVideos() {
 
 // Render Table
 function renderTable(data) {
+    // Cập nhật số thông báo đỏ trên icon App Quản Trị (PWA)
+    const pendingTotal = data.filter(v => (v.trang_thai === 'cho_duyet' || Number(v.so_bao_cao) > 0)).length;
+    updateAdminAppBadge(pendingTotal);
     const tbody = document.getElementById('video-table-body');
     tbody.innerHTML = '';
     
@@ -351,6 +404,7 @@ function initAdminSocket() {
                 showToast(`🤖 Video mới đã được TỰ ĐỘNG DUYỆT: "${data.video?.Title || 'Video'}"`, 'success');
             } else {
                 showToast(`⚠️ CẢNH BÁO: Video mới bị giữ lại do nghi vấn: ${data.reason || 'Cần kiểm duyệt'}`, 'error');
+                showAdminDesktopNotification('TIKTUBE Quản Trị - Video mới', `⚠️ Có video mới cần duyệt: "${data.video?.Title || 'Video mới'}" - ${data.reason || ''}`);
             }
             fetchVideos();
         });
@@ -360,6 +414,7 @@ function initAdminSocket() {
             console.log('🚨 [Report Alert]', data);
             const hiddenNote = data.autoHidden ? ' ⛔ ĐÃ TỰ ĐỘNG TẠM ẨN KHỎI TRANG CHỦ!' : '';
             showToast(`🚨 BÁO CÁO VI PHẠM: Video "${data.title}" bị phản ánh: ${data.reason} (${data.totalReports} lượt).${hiddenNote}`, 'error');
+            showAdminDesktopNotification('🚨 BÁO CÁO VI PHẠM KHẨN CẤP', `Video "${data.title}" bị báo cáo vì: ${data.reason} (${data.totalReports} lượt).${hiddenNote}`);
             fetchVideos();
         });
 
