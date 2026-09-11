@@ -12,24 +12,30 @@ app.setAppUserModelId('com.tiktube.admin');
 
 function checkServerRunning(port) {
   return new Promise((resolve) => {
-    const req = http.get(`http://localhost:${port}/admin.html`, (res) => {
+    const req = http.get(`http://127.0.0.1:${port}/`, (res) => {
       resolve(true);
     });
-    req.on('error', () => {
-      const reqRoot = http.get(`http://localhost:${port}`, (res2) => {
-        resolve(true);
-      });
-      reqRoot.on('error', () => resolve(false));
-      reqRoot.setTimeout(1000, () => {
-        reqRoot.destroy();
-        resolve(false);
-      });
-    });
+    req.on('error', () => resolve(false));
     req.setTimeout(1000, () => {
       req.destroy();
       resolve(false);
     });
   });
+}
+
+// Chờ server backend khởi động và kết nối CSDL thành công
+async function waitForServer(port, maxSeconds = 25) {
+  console.log(`[Electron Admin] Đang chờ máy chủ nội bộ (port ${port}) kết nối CSDL...`);
+  for (let i = 0; i < maxSeconds * 2; i++) {
+    const ok = await checkServerRunning(port);
+    if (ok) {
+      console.log(`[Electron Admin] ✅ Máy chủ backend đã sẵn sàng trên port ${port}!`);
+      return true;
+    }
+    await new Promise(r => setTimeout(r, 500));
+  }
+  console.warn(`[Electron Admin] ⚠️ Hết thời gian chờ backend (25s).`);
+  return false;
 }
 
 async function ensureBackendServer() {
@@ -45,7 +51,7 @@ async function ensureBackendServer() {
       console.error('[Electron Admin] Backend error:', err);
     });
 
-    await new Promise(r => setTimeout(r, 2500));
+    await waitForServer(PORT, 25);
   } else {
     console.log(`[Electron Admin] Backend Quản trị đã chạy trên port ${PORT}.`);
   }
@@ -69,9 +75,21 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadURL(`http://localhost:${PORT}/admin.html`).catch(() => {
-    mainWindow.loadFile(path.join(__dirname, 'admin.html'));
-  });
+  const targetUrl = `http://127.0.0.1:${PORT}/admin.html`;
+  const tryLoad = async (retries = 10) => {
+    try {
+      await mainWindow.loadURL(targetUrl);
+    } catch (err) {
+      if (retries > 0) {
+        console.log(`[Electron Admin] Thử kết nối lại máy chủ sau 1.5s (${retries} lần còn lại)...\n`);
+        setTimeout(() => tryLoad(retries - 1), 1500);
+      } else {
+        console.error('[Electron Admin] Không thể kết nối máy chủ backend:', err);
+        mainWindow.loadFile(path.join(__dirname, 'admin.html'));
+      }
+    }
+  };
+  tryLoad();
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
